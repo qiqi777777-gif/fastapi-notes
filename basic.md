@@ -177,7 +177,7 @@ def get_user_id(
     return {"user_id": user_id, "message": f"User {user_id} profile"}
 ```
 
-# Body - Multiple Parameters
+# 7. Body - Multiple Parameters
 
 ```python
 from typing import Union
@@ -249,6 +249,105 @@ def put_embed(
     item_id: int, item: Item = Body(embed=True) ):
     return {"item_id": item_id, "item": item}
 ```
+
+# 8. Body - Fields
+add validation and metadata to Pydantic model fields
+
+```python
+from fastapi import Body, FastAPI
+from pydantic import BaseModel, Field
+
+app = FastAPI()
+
+# Create the Item model with Field validation
+class Item(BaseModel):
+    name: str
+    description: str | None = Field(default=None, title="The description of the item", max_length=300)
+    price: float = Field(gt=0, description="The price must be greater than zero")
+    tax: float | None = None
+
+@app.put("/items/{item_id}")
+async def update_item(item_id: int, item: Item = Body(embed=True) ):
+    return {"item_id": item_id, "item": item}
+```
+# 9. Body - Nested Models
+
+```python
+from fastapi import FastAPI
+from pydantic import BaseModel, HttpUrl
+
+app = FastAPI()
+
+# Create the Image nested model
+# Fields: url (HttpUrl), name (str)
+class Image(BaseModel):
+    # TODO: Add the fields
+    url: HttpUrl
+    name : str
+
+# Create the Item model with nested structures
+class Item(BaseModel):
+    # TODO: Add the fields with proper types
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    tags: set[str] = set()  # Set of unique strings
+    image: Image | None = None  # Single nested model
+
+
+# Create ItemWithImages model for lists of nested models
+class ItemWithImages(BaseModel):
+    # TODO: Add the fields
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    images: list[Image] = [] 
+
+@app.put("/items/{item_id}")
+async def update_item(item_id: int, item: Item):
+    return {"item_id": item_id, "item": item}
+
+@app.put("/items/{item_id}/images")
+async def update_item_with_images(item_id: int, item: ItemWithImages):
+    return {"item_id": item_id, "item": item}
+
+@app.post("/index-weights/")
+async def create_index_weights(weights: dict[int, float]):
+    return weights
+```
+# 10. Extra Data Types
+
+```python
+from datetime import datetime, time, timedelta
+from typing import Annotated
+from uuid import UUID
+from fastapi import Body, FastAPI
+
+app = FastAPI()
+
+# Annotated[Union[time, None], Body()] = None
+# Inside the function: Calculate start_process / duration
+@app.put("/items/{item_id}")
+async def  read_items(
+    item_id: UUID,
+    start_datetime: Annotated[datetime, Body()], #"2008-09-15T15:53:00+05:00"
+    end_datetime: Annotated[datetime, Body()], # datetime.date 2008-09-15 ; datetime.time  "14:23:55.003"
+    process_after: Annotated[timedelta, Body()], # datetime.timedelta: 3600 (for 1 hour)
+    repeat_at: Annotated[time | None, Body()] = None
+    ):
+    start_process = start_datetime + process_after
+    duration = end_datetime - start_process
+    return  {
+        "item_id": item_id, "start_datetime": start_datetime, "end_datetime": end_datetime,
+         "process_after": process_after, "repeat_at": repeat_at, "start_process": start_process, "duration": duration}
+```
+
+
+
+
+
 
 
 
